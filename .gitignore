@@ -1,1 +1,44 @@
+# ======================================================================
+# What DOES get pushed (NOT ignored):
+#   src/            - all pipeline source code
+#   scripts/        - download + smoke-test helpers
+#   report/         - deliverable figures (and REPORT.md at repo root)
+#   README.md, requirements.txt, .gitignore
+#   preprocessing.ipynb, load_data.py, *.pt, test_flux_predictions.csv,
+#   "Solar Flare Iteration 3 (1).pdf"  (existing project files)
+# Everything else is ignored below.
+# ======================================================================
+
+# --- Dataset (downloaded locally, never pushed) ---
 data/
+
+# --- Claude / agent tooling (local only, never pushed) ---
+.claude/
+CLAUDE.md
+MEMORY.md
+memory/
+.claude-memory/
+
+# --- Generated outputs / intermediate artifacts (regenerable) ---
+artifacts/
+
+# --- Temp sandbox from the smoke test ---
+._smoke/
+
+# --- Python caches / build ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
