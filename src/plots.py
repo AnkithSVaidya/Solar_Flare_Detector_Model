@@ -85,6 +85,35 @@ def plot_feature_importance(names: List[str], scores: np.ndarray,
     return _save(fig, name)
 
 
+def plot_least_important(names: List[str], scores: np.ndarray,
+                         title: str, name: str, bottom: int = 15) -> str:
+    """The features with the smallest (near-zero) importance."""
+    order = np.argsort(scores)[:bottom]  # ascending -> least important first
+    fig, ax = plt.subplots(figsize=(7, 0.35 * len(order) + 1))
+    ax.barh(range(len(order)), scores[order][::-1], color=PALETTE[7])
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels([names[i] for i in order][::-1], fontsize=8)
+    ax.axvline(0, color="k", lw=0.6)
+    ax.set_xlabel("Importance (drop in F1 when shuffled)")
+    ax.set_title(title)
+    return _save(fig, name)
+
+
+def plot_signed_importance(names: List[str], coefs: np.ndarray,
+                           title: str, name: str, top: int = 15) -> str:
+    """Signed linear-model coefficients (direction + magnitude)."""
+    order = np.argsort(np.abs(coefs))[::-1][:top][::-1]
+    colors = [PALETTE[3] if coefs[i] > 0 else PALETTE[0] for i in order]
+    fig, ax = plt.subplots(figsize=(7, 0.35 * len(order) + 1))
+    ax.barh(range(len(order)), coefs[order], color=colors)
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels([names[i] for i in order], fontsize=8)
+    ax.axvline(0, color="k", lw=0.6)
+    ax.set_xlabel("Standardized coefficient  (red = raises flare prob, blue = lowers)")
+    ax.set_title(title)
+    return _save(fig, name)
+
+
 def plot_model_comparison(metrics: Dict[str, Dict[str, float]],
                           keys=("accuracy", "precision", "recall",
                                 "f1", "roc_auc"),
@@ -98,11 +127,11 @@ def plot_model_comparison(metrics: Dict[str, Dict[str, float]],
         ax.bar(x + j * w, vals, w, label=k, color=PALETTE[j % len(PALETTE)])
     ax.set_xticks(x + w * (len(keys) - 1) / 2)
     ax.set_xticklabels(models, rotation=20, ha="right")
-    ax.set_ylim(0, 1.0)
+    ax.set_ylim(0, 1.05)
     ax.set_ylabel("Score")
-    ax.set_title("Model Performance Comparison (test set)")
+    ax.set_title("Model Performance Comparison (test set)", pad=28)
     ax.legend(ncol=len(keys), fontsize=8, loc="lower center",
-              bbox_to_anchor=(0.5, 1.02))
+              bbox_to_anchor=(0.5, 1.03), frameon=False)
     return _save(fig, name)
 
 

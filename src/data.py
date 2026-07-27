@@ -96,7 +96,7 @@ def discover_samples(data_dir: Optional[str] = None,
     ``split`` optionally restricts to a sub-tree ("training"/"test"); by
     default every meta_data.csv found under ``data_dir`` is used.
     """
-    data_dir = data_dir or config.DATA_DIR
+    data_dir = data_dir or config.DATASET_DIR
     if split:
         data_dir = os.path.join(data_dir, split)
     if not os.path.isdir(data_dir):

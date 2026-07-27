@@ -3,8 +3,8 @@
     python -m src.run_all
 
 Steps: build features (if needed) -> train/tune/evaluate tabular models ->
-CNN baseline -> generate REPORT.md.  Safe to re-run; each step overwrites
-its own artifacts.
+CNN baseline.  Produces the metrics and figures in artifacts/ and
+report/figures/.  Safe to re-run; each step overwrites its own artifacts.
 """
 from __future__ import annotations
 
@@ -28,10 +28,8 @@ def main(rebuild: bool = False):
     from . import cnn
     cnn.main()
 
-    from . import make_report
-    make_report.main()
-
-    print("\nAll done. See REPORT.md and report/figures/.")
+    print("\nAll done. Results in artifacts/ and report/figures/; "
+          "see REPORT.md for the write-up.")
 
 
 if __name__ == "__main__":

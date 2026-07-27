@@ -47,7 +47,7 @@ python -m pip install -r requirements.txt
 ## 3. Run the whole pipeline
 
 ```bash
-python -m src.run_all            # build features -> train/tune -> CNN -> report
+python -m src.run_all            # build features -> train/tune -> evaluate -> CNN
 python -m src.run_all --rebuild  # also re-extract features from images
 ```
 
@@ -58,7 +58,9 @@ Outputs:
 - `artifacts/best_model.joblib`, `artifacts/cnn_classifier.pt` — saved models
 - `report/figures/*.png` — confusion matrix, ROC, PR, feature importance,
   learning curve, model comparison, feature ablation
-- `REPORT.md` — the written report, numbers filled in from the run
+
+The written analysis, with all results and figures, is in
+[`REPORT.md`](REPORT.md).
 
 ## 4. Code layout
 
@@ -72,8 +74,7 @@ Outputs:
 | `src/train.py` | Train, GridSearch-tune, evaluate, interpret; make figures |
 | `src/cnn.py` | Clean CNN baseline on magnetograms |
 | `src/plots.py` | All figure generation |
-| `src/make_report.py` | Generate `REPORT.md` from metrics |
-| `src/run_all.py` | Orchestrate everything |
+| `src/run_all.py` | Orchestrate the full pipeline |
 
 The original exploratory `preprocessing.ipynb` and the first CNNs are kept for
 history; the `src/` package is the cleaned-up, modular version.

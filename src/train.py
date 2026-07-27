@@ -40,7 +40,7 @@ from .models import build_models, has_xgboost
 
 warnings.filterwarnings("ignore")
 
-META_COLS = ["id", "active_region", "peak_flux", "log10_flux", "label"]
+META_COLS = ["split", "id", "active_region", "peak_flux", "log10_flux", "label"]
 CYCLE_COLS = ["cycle_sin", "cycle_cos", "year"]
 CV_SPLITS = 4
 TUNE_SCORING = "f1"
@@ -94,7 +94,7 @@ def get_scores(pipe, X):
         return pipe.predict_proba(X)[:, 1]
     if hasattr(pipe, "decision_function"):
         d = pipe.decision_function(X)
-        return (d - d.min()) / (d.ptp() + 1e-9)
+        return (d - d.min()) / (np.ptp(d) + 1e-9)
     return pipe.predict(X).astype(float)
 
 
@@ -110,10 +110,21 @@ def main():
 
     plots.plot_class_balance(y)
 
-    tr, te = group_holdout(X, y, groups, config.TEST_SIZE, config.RANDOM_STATE)
+    # Prefer the dataset's official train/test split (leakage-free: the two
+    # folders share no active regions). Otherwise make a grouped holdout.
+    if "split" in df.columns and set(df["split"].unique()) >= {"train", "test"}:
+        tr = np.where(df["split"].values == "train")[0]
+        te = np.where(df["split"].values == "test")[0]
+        split_desc = "official SDOBenchmark split"
+    else:
+        tr, te = group_holdout(X, y, groups, config.TEST_SIZE,
+                               config.RANDOM_STATE)
+        split_desc = "grouped holdout by active region"
+
     X_tr, X_te = X.iloc[tr], X.iloc[te]
     y_tr, y_te = y[tr], y[te]
     g_tr = groups[tr]
+    print(f"Split: {split_desc}")
     print(f"Train: {len(tr)}  Test: {len(te)}  "
           f"(train pos {y_tr.mean()*100:.1f}%, test pos {y_te.mean()*100:.1f}%)")
 
@@ -187,14 +198,40 @@ def main():
         return [{"feature": names[i], "importance": float(scores[i])}
                 for i in order]
 
+    def _bottom(names, scores, k=15):
+        order = np.argsort(scores)[:k]
+        return [{"feature": names[i], "importance": float(scores[i])}
+                for i in order]
+
     # Feature importance: permutation on the best model (model-agnostic)
     perm = permutation_importance(best_model, X_te, y_te, scoring="f1",
                                   n_repeats=10, random_state=config.RANDOM_STATE,
                                   n_jobs=-1)
     plots.plot_feature_importance(
         feat_cols, perm.importances_mean,
-        f"Permutation Importance — {best_name}", "feature_importance_perm.png")
+        f"Most Important Features — {best_name} (permutation)",
+        "feature_importance_perm.png")
+    plots.plot_least_important(
+        feat_cols, perm.importances_mean,
+        f"Least Important Features — {best_name} (permutation)",
+        "feature_importance_least.png")
     top_perm = _top(feat_cols, perm.importances_mean)
+    bottom_perm = _bottom(feat_cols, perm.importances_mean)
+
+    # If the best model is linear, its signed coefficients are a natural,
+    # directional importance measure -> plot them too.
+    top_coef = []
+    clf = best_model.named_steps.get("clf")
+    if clf is not None and hasattr(clf, "coef_"):
+        coefs = np.ravel(clf.coef_)
+        if len(coefs) == len(feat_cols):
+            plots.plot_signed_importance(
+                feat_cols, coefs,
+                f"{best_name} Coefficients (standardized)",
+                "feature_importance_coef.png")
+            order = np.argsort(np.abs(coefs))[::-1][:15]
+            top_coef = [{"feature": feat_cols[i], "coef": float(coefs[i])}
+                        for i in order]
 
     # Native impurity importance from the tuned RandomForest (always present)
     top_rf = []
@@ -257,13 +294,16 @@ def main():
     yreg_te = df["log10_flux"].values[te]
     reg.fit(X_tr, yreg_tr)
     yreg_pred = reg.predict(X_te)
+    _mse = float(mean_squared_error(yreg_te, yreg_pred))
     regression = {
         "mae": float(mean_absolute_error(yreg_te, yreg_pred)),
-        "rmse": float(np.sqrt(mean_squared_error(yreg_te, yreg_pred))),
+        "mse": _mse,
+        "rmse": float(np.sqrt(_mse)),
         "r2": float(r2_score(yreg_te, yreg_pred)),
     }
     print(f"\nRegression (RF, log10 flux): "
-          f"MAE={regression['mae']:.3f} R2={regression['r2']:.3f}")
+          f"MAE={regression['mae']:.3f} MSE={regression['mse']:.3f} "
+          f"R2={regression['r2']:.3f}")
 
     # ------------------------------------------------------------------
     # Persist everything
@@ -274,6 +314,10 @@ def main():
         "n_active_regions": int(len(set(groups))),
         "positive_rate": float(y.mean()),
         "flare_threshold": config.FLARE_THRESHOLD,
+        "split_description": split_desc,
+        "n_train": int(len(tr)),
+        "n_test": int(len(te)),
+        "train_positive_rate": float(y_tr.mean()),
         "test_positive_rate": float(y_te.mean()),
         "best_model": best_name,
         "has_xgboost": has_xgboost(),
@@ -282,7 +326,9 @@ def main():
         "regression_rf": regression,
         "feature_names": feat_cols,
         "top_features_permutation": top_perm,
+        "bottom_features_permutation": bottom_perm,
         "top_features_rf": top_rf,
+        "top_coefficients": top_coef,
     }
     with open(os.path.join(config.ARTIFACTS_DIR, "metrics.json"), "w") as f:
         json.dump(summary, f, indent=2, default=float)

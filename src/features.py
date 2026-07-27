@@ -117,27 +117,37 @@ def extract_features(sample: Sample) -> Dict[str, float]:
     return feats
 
 
-def build_feature_frame(samples: List[Sample]):
-    """Vectorise ``extract_features`` over all samples.
+def build_feature_frame(samples: List[Sample], n_jobs: int = -1):
+    """Vectorise ``extract_features`` over all samples (parallel by default).
 
     Returns (X_df, meta_df) where meta_df carries id / active_region /
-    peak_flux / label so the training script can group-split and label.
+    peak_flux / label so the training script can split and label.
     """
     import pandas as pd
 
-    rows, meta = [], []
     n = len(samples)
-    for i, s in enumerate(samples):
-        rows.append(extract_features(s))
-        meta.append({
-            "id": s.sample_id,
-            "active_region": s.active_region,
-            "peak_flux": s.peak_flux,
-            "log10_flux": float(np.log10(max(s.peak_flux, config.FLUX_FLOOR))),
-            "label": int(s.peak_flux >= config.FLARE_THRESHOLD),
-        })
-        if (i + 1) % 100 == 0 or (i + 1) == n:
-            print(f"  extracted {i + 1}/{n} samples", flush=True)
+    # Image IO + gradient stats dominate, so parallelise across CPU cores.
+    try:
+        from joblib import Parallel, delayed
+        print(f"  extracting {n} samples on {n_jobs if n_jobs>0 else 'all'} "
+              f"cores ...", flush=True)
+        rows = Parallel(n_jobs=n_jobs, verbose=5)(
+            delayed(extract_features)(s) for s in samples)
+    except Exception as e:  # pragma: no cover - fallback to serial
+        print("  parallel extraction unavailable, running serial:", e)
+        rows = []
+        for i, s in enumerate(samples):
+            rows.append(extract_features(s))
+            if (i + 1) % 200 == 0 or (i + 1) == n:
+                print(f"  extracted {i + 1}/{n}", flush=True)
+
+    meta = [{
+        "id": s.sample_id,
+        "active_region": s.active_region,
+        "peak_flux": s.peak_flux,
+        "log10_flux": float(np.log10(max(s.peak_flux, config.FLUX_FLOOR))),
+        "label": int(s.peak_flux >= config.FLARE_THRESHOLD),
+    } for s in samples]
 
     X = pd.DataFrame(rows)
     meta_df = pd.DataFrame(meta)

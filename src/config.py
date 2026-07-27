@@ -13,6 +13,13 @@ import os
 # ----------------------------------------------------------------------
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(ROOT, "data")
+
+# The Kaggle download unpacks into data/SDOBenchmark_full (the real set)
+# and data/SDOBenchmark_example (a tiny subset).  Prefer the full set;
+# fall back to whatever is directly under data/.
+_full = os.path.join(DATA_DIR, "SDOBenchmark_full")
+DATASET_DIR = _full if os.path.isdir(_full) else DATA_DIR
+
 ARTIFACTS_DIR = os.path.join(ROOT, "artifacts")
 FIGURES_DIR = os.path.join(ROOT, "report", "figures")
 

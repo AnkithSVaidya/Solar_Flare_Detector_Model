@@ -42,19 +42,19 @@ def _make_image(path, strength, wl):
     Image.fromarray((img * 255).astype(np.uint8)).save(path)
 
 
-def generate(n_ar=60):
-    train_root = os.path.join(SMOKE, "data", "training")
-    os.makedirs(train_root, exist_ok=True)
-    rng = np.random.default_rng(0)
+def _generate_split(split_root, ar_start, n_ar, seed):
+    import pandas as pd
+    os.makedirs(split_root, exist_ok=True)
+    rng = np.random.default_rng(seed)
     meta_rows = []
-    for a in range(n_ar):
+    for a in range(ar_start, ar_start + n_ar):
         ar = str(11000 + a)
         for k in range(rng.integers(1, 3)):
             strength = float(rng.uniform(0, 1))
             log_flux = -9 + 5 * strength + rng.normal(0, 0.2)
             peak_flux = 10 ** log_flux
-            sample = f"2012_{a:02d}_{k:02d}_00_00_00_0"
-            folder = os.path.join(train_root, ar, sample)
+            sample = f"2012_{a:03d}_{k:02d}_00_00_00_0"
+            folder = os.path.join(split_root, ar, sample)
             os.makedirs(folder, exist_ok=True)
             for ts in range(4):
                 stamp = f"2012-01-{ts+1:02d}T000000"
@@ -62,10 +62,17 @@ def generate(n_ar=60):
                     _make_image(os.path.join(folder, f"{stamp}__{wl}.jpg"),
                                 strength, wl)
             meta_rows.append({"id": f"{ar}_{sample}", "peak_flux": peak_flux})
-    import pandas as pd
     pd.DataFrame(meta_rows).to_csv(
-        os.path.join(train_root, "meta_data.csv"), index=False)
-    print(f"Generated {len(meta_rows)} synthetic samples across {n_ar} ARs.")
+        os.path.join(split_root, "meta_data.csv"), index=False)
+    return len(meta_rows)
+
+
+def generate():
+    root = os.path.join(SMOKE, "data")
+    n_tr = _generate_split(os.path.join(root, "training"), 0, 60, seed=0)
+    n_te = _generate_split(os.path.join(root, "test"), 60, 20, seed=1)
+    print(f"Generated {n_tr} train + {n_te} test synthetic samples "
+          f"(disjoint ARs).")
 
 
 def main():
@@ -73,6 +80,7 @@ def main():
         shutil.rmtree(SMOKE)
     # Redirect every output path into the temp sandbox.
     config.DATA_DIR = os.path.join(SMOKE, "data")
+    config.DATASET_DIR = os.path.join(SMOKE, "data")
     config.ARTIFACTS_DIR = os.path.join(SMOKE, "artifacts")
     config.FIGURES_DIR = os.path.join(SMOKE, "figures")
     config.FEATURES_CSV = os.path.join(config.ARTIFACTS_DIR, "features.csv")
@@ -81,15 +89,15 @@ def main():
 
     generate()
 
-    from src import build_dataset, train, cnn, make_report
+    from src import build_dataset, train, cnn
     print("\n--- build_dataset ---");  build_dataset.main()
     print("\n--- train ---");          train.main()
     print("\n--- cnn ---");            cnn.main()
-    print("\n--- make_report ---");    make_report.main()
 
     figs = os.listdir(config.FIGURES_DIR)
     print(f"\nFigures produced ({len(figs)}):", sorted(figs))
-    assert os.path.exists(os.path.join(SMOKE, "REPORT.md"))
+    assert os.path.exists(os.path.join(config.ARTIFACTS_DIR, "metrics.json"))
+    assert os.path.exists(os.path.join(config.ARTIFACTS_DIR, "cnn_metrics.json"))
     print("\nSMOKE TEST PASSED")
 
     shutil.rmtree(SMOKE)

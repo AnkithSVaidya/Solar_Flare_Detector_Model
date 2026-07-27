@@ -16,7 +16,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import (RandomForestClassifier,
+                              HistGradientBoostingClassifier)
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.dummy import DummyClassifier
@@ -71,10 +72,12 @@ def build_models(pos_weight: float = 1.0) -> Dict[str, Tuple[Pipeline, dict]]:
          "clf__weights": ["uniform", "distance"]},
     )
 
+    # probability=False + decision_function keeps RBF-SVM tractable on
+    # thousands of samples (avoids the internal Platt-scaling CV).
     models["SVM"] = (
-        _scaled(SVC(kernel="rbf", probability=True,
+        _scaled(SVC(kernel="rbf", probability=False,
                     class_weight="balanced", random_state=rs)),
-        {"clf__C": [0.5, 1.0, 5.0], "clf__gamma": ["scale", 0.01, 0.1]},
+        {"clf__C": [1.0, 5.0], "clf__gamma": ["scale", 0.05]},
     )
 
     models["RandomForest"] = (
@@ -82,15 +85,17 @@ def build_models(pos_weight: float = 1.0) -> Dict[str, Tuple[Pipeline, dict]]:
             n_estimators=400, class_weight="balanced_subsample",
             n_jobs=-1, random_state=rs)),
         {"clf__n_estimators": [300, 600],
-         "clf__max_depth": [None, 8, 16],
-         "clf__min_samples_leaf": [1, 3, 5]},
+         "clf__max_depth": [None, 12, 20],
+         "clf__min_samples_leaf": [1, 3]},
     )
 
+    # HistGradientBoosting: fast, multithreaded, handles NaNs natively.
     models["GradBoost"] = (
-        _unscaled(GradientBoostingClassifier(random_state=rs)),
-        {"clf__n_estimators": [200, 400],
-         "clf__learning_rate": [0.03, 0.1],
-         "clf__max_depth": [2, 3]},
+        _unscaled(HistGradientBoostingClassifier(
+            class_weight="balanced", random_state=rs)),
+        {"clf__max_iter": [200, 400],
+         "clf__learning_rate": [0.05, 0.1],
+         "clf__max_depth": [None, 3]},
     )
 
     if _HAS_XGB:

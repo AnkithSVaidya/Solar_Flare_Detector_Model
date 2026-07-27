@@ -22,15 +22,20 @@ from . import config, plots
 from .data import discover_samples, load_gray
 
 CNN_IMG = 32
-AUG_PER_SAMPLE = 4
-EPOCHS = 40
-BATCH = 64
+AUG_PER_SAMPLE = 3
+EPOCHS = 30
+BATCH = 128
 LR = 1e-3
 
 
-def _load_last_magnetograms(size=CNN_IMG):
-    """One magnetogram per sample (last timestep) + label + group."""
-    samples = discover_samples()
+def _load_split(split, size=CNN_IMG):
+    """One magnetogram per sample (last timestep) + label + group, for a
+    given split. Returns empty arrays if the split folder is absent."""
+    try:
+        samples = discover_samples(split=split)
+    except FileNotFoundError:
+        return (np.empty((0, size, size), np.float32),
+                np.empty((0,), np.int64), np.empty((0,), object))
     X, y, groups = [], [], []
     for s in samples:
         paths = s.images.get("magnetogram", [])
@@ -43,7 +48,8 @@ def _load_last_magnetograms(size=CNN_IMG):
         X.append(arr)
         y.append(int(s.peak_flux >= config.FLARE_THRESHOLD))
         groups.append(s.active_region)
-    return np.asarray(X, np.float32), np.asarray(y, np.int64), np.asarray(groups)
+    return (np.asarray(X, np.float32), np.asarray(y, np.int64),
+            np.asarray(groups, object))
 
 
 def _augment(a):
@@ -70,25 +76,42 @@ def main():
     torch.manual_seed(config.RANDOM_STATE)
     np.random.seed(config.RANDOM_STATE)
 
-    X, y, groups = _load_last_magnetograms()
-    print(f"CNN dataset: {len(X)} magnetograms, {y.mean()*100:.1f}% positive")
-
-    gss = GroupShuffleSplit(1, test_size=config.TEST_SIZE,
-                            random_state=config.RANDOM_STATE)
-    tr, te = next(gss.split(X, y, groups))
+    # Use the official split when the test folder exists; else grouped holdout.
+    Xtr0, ytr0, gtr0 = _load_split("training")
+    Xte0, yte0, gte0 = _load_split("test")
+    if len(Xte0) == 0:
+        # No official test folder: pool everything and grouped-split by AR.
+        from .data import discover_samples
+        X, y, groups = [], [], []
+        for s in discover_samples():
+            paths = s.images.get("magnetogram", [])
+            if not paths:
+                continue
+            try:
+                X.append(load_gray(paths[-1], size=CNN_IMG))
+            except Exception:
+                continue
+            y.append(int(s.peak_flux >= config.FLARE_THRESHOLD))
+            groups.append(s.active_region)
+        X = np.asarray(X, np.float32); y = np.asarray(y, np.int64)
+        gss = GroupShuffleSplit(1, test_size=config.TEST_SIZE,
+                                random_state=config.RANDOM_STATE)
+        tr, te = next(gss.split(X, y, np.asarray(groups, object)))
+        Xtr0, ytr0 = X[tr], y[tr]
+        Xte0, yte0 = X[te], y[te]
+    print(f"CNN dataset: train {len(Xtr0)} ({ytr0.mean()*100:.1f}% pos), "
+          f"test {len(Xte0)} ({yte0.mean()*100:.1f}% pos)")
 
     # Light augmentation of the training split only.
-    Xtr = [X[i] for i in tr]
-    ytr = [y[i] for i in tr]
-    aug_X, aug_y = list(Xtr), list(ytr)
-    for i in tr:
+    aug_X, aug_y = list(Xtr0), list(ytr0)
+    for i in range(len(Xtr0)):
         for _ in range(AUG_PER_SAMPLE):
-            aug_X.append(_augment(X[i]))
-            aug_y.append(int(y[i]))
+            aug_X.append(_augment(Xtr0[i]))
+            aug_y.append(int(ytr0[i]))
     Xtr = np.asarray(aug_X, np.float32)[:, None, :, :]
     ytr = np.asarray(aug_y, np.float32)[:, None]
-    Xte = X[te][:, None, :, :]
-    yte = y[te]
+    Xte = Xte0[:, None, :, :]
+    yte = yte0
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
