@@ -15,10 +15,12 @@ import shutil
 import numpy as np
 from PIL import Image
 
+from src.i4 import build_dataset, cnn, make_report
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from src import config  # noqa: E402
+from src.i4 import config  # noqa: E402
 
 SMOKE = os.path.join(ROOT, "._smoke")
 WLS = config.WAVELENGTHS
@@ -89,7 +91,11 @@ def main():
 
     generate()
 
+<<<<<<< Updated upstream
     from src import build_dataset, train, cnn
+=======
+    from src.i4 import train
+>>>>>>> Stashed changes
     print("\n--- build_dataset ---");  build_dataset.main()
     print("\n--- train ---");          train.main()
     print("\n--- cnn ---");            cnn.main()
