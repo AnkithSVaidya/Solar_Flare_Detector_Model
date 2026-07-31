@@ -105,7 +105,8 @@ def main():
             print("Saved new best model!")
 
     print("Baseline training complete.")
-
+    model.eval()
+    visualize_gradcam(model, val_dataset, idx=5, device=device)   # pick any validation sample index
 
 if __name__ == "__main__":
     main()
