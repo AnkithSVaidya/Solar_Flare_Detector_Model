@@ -46,7 +46,7 @@ class MagnetogramDataset(torch.utils.data.Dataset):
 
         # Get the sample from the metadata
         row = self.metadata.iloc[idx]
-        dataset_id = row["dataset_id"]
+        dataset_id = row["id"]
         self._dir_cache = {}  # reset per-sample; reused across the 10 wavelengths x 4 timesteps below
 
         images = []
@@ -98,7 +98,7 @@ class MagnetogramDataset(torch.utils.data.Dataset):
         metadata = pd.read_csv(os.path.join(self.root_data_dir, "meta_data.csv"))
         metadata["end"] = pd.to_datetime(metadata["end"])
         metadata = metadata.sort_values(by="end")
-        metadata = metadata.rename(columns={"id": "dataset_id", "end": "datetime"})
+        metadata = metadata.rename(columns={"end": "datetime"})
         metadata = metadata.drop(columns=['start'])
         metadata["is_flare"] = metadata["peak_flux"] > CUTOFF
 
@@ -113,13 +113,10 @@ class MagnetogramDataset(torch.utils.data.Dataset):
             return any(f.split("__")[1].split(".")[0] == "magnetogram" for f in files if "__" in f)
 
         before = len(metadata)
-        metadata = metadata[metadata["dataset_id"].apply(has_magnetogram)]
+        metadata = metadata[metadata["id"].apply(has_magnetogram)]
         after = len(metadata)
         if before != after:
             print(f"Dropped {before - after} samples with no magnetogram images ({after} remaining)")
-
-        metadata["id"] = range(len(metadata))
-        metadata = metadata.set_index("id")
 
         return metadata
 if __name__ == "__main__":

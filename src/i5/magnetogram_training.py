@@ -27,7 +27,7 @@ loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 val_dataset = MagnetogramDataset(training=False)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=32, shuffle=False)
 
-n_epochs = 20
+n_epochs = 2
 
 for epoch in range(n_epochs):
     # --- Training ---
