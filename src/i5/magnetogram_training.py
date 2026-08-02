@@ -7,7 +7,7 @@ model = MagnetogramCNN()
 
 
 loss_fn = nn.BCEWithLogitsLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=10e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=10e-5)
 
 
 import torch
@@ -27,7 +27,7 @@ loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 val_dataset = MagnetogramDataset(training=False)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=32, shuffle=False)
 
-n_epochs = 2
+n_epochs = 10
 
 for epoch in range(n_epochs):
     # --- Training ---
