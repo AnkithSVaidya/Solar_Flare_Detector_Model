@@ -18,6 +18,8 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib
+
+from . import config
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from sklearn.metrics import (
@@ -27,7 +29,7 @@ from sklearn.metrics import (
     precision_recall_curve,
 )
 
-from . import config, plots
+from . import plots
 
 CSV = os.path.join(config.ROOT, "test_flux_predictions.csv")
 
