@@ -1,45 +1,38 @@
 """
-Loads the saved best model checkpoint and evaluates it on the held-out
-TEST dataset (data/test), reporting accuracy, the majority-class baseline,
-a confusion matrix, and precision/recall/F1 for the flare class.
-
-Run this in your project directory, alongside magnetogram_cnn.py,
-magnetogram_dataset.py, and your saved model weights.
-
-Note: this is meant to be run sparingly -- the test set should be your
-final check, not something you re-run after every training tweak (that
-would slowly turn it into a second validation set through repeated peeking).
+Loads the saved best dual model checkpoint and evaluates it on the held-out
+TEST dataset, reporting accuracy, confusion matrix, and precision/recall/F1.
 """
 import torch
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, ConfusionMatrixDisplay
-from models.magnetogram_cnn import MagnetogramCNN
+from models.dual_cnn import DualCNNFlareClassifier
 from preprocessing.flare_dataset import FlareDataset
-from grad_cam import GradCAM
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --- Load the saved best model ---
-model = MagnetogramCNN().to(device)
-model.load_state_dict(torch.load("magnetogram_cnn.pt", map_location=device))
+model = DualCNNFlareClassifier().to(device)
+model.load_state_dict(torch.load("dual_cnn.pt", map_location=device))
 model.eval()
 
-# --- Load the TEST dataset (never touched during training/val) ---
-test_dataset = FlareDataset(features=["magnetogram"], type="test")
+# --- Load the TEST dataset ---
+test_dataset = FlareDataset(features=['magnetogram', 'continuum'], type='test')
 test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 
 @torch.no_grad()
-def evaluate(model, loader, device, threshold=0.5):
+def evaluate(model, loader, device, threshold=0.3):
     all_preds = []
     all_labels = []
     all_probs = []
 
-    for X, y in loader:
-        X, y = X.to(device), y.to(device)
+    for batch_data, y in loader:
+        magnetogram = batch_data[:, 0:1, :, :].to(device)
+        continuum = batch_data[:, 1:2, :, :].to(device)
+        y = y.to(device)
 
-        logits = model(X)
-        probs = torch.sigmoid(logits).squeeze(1)   # (B,)
+        logits = model(continuum, magnetogram)
+        probs = torch.sigmoid(logits).squeeze(1)
         preds = (probs > threshold).long()
 
         all_preds.extend(preds.cpu().tolist())
@@ -89,40 +82,29 @@ plt.tight_layout()
 plt.show()
 
 
-# --- Grad-CAM on one correct and one incorrect prediction ---
-# NOTE: this relies on test_loader having shuffle=False, so that the order of
-# all_labels/all_preds/all_probs matches test_dataset's own indexing exactly
-# (list position i == test_dataset[i]).
+# --- Show sample predictions (without Grad-CAM, just input visualization) ---
+def show_sample(dataset, idx, true_label, pred_label, prob, tag):
+    batch_data, y = dataset[idx]
+    
+    original_mag = batch_data[0, :, :].cpu().numpy()
+    original_cont = batch_data[1, :, :].cpu().numpy()
 
-def show_gradcam_sample(model, dataset, idx, true_label, pred_label, prob, device, tag):
-    X, y = dataset[idx]
-    x_input = X.unsqueeze(0).unsqueeze(0).to(device)
-    x_input.requires_grad_()
-
-    gradcam = GradCAM(model, model.conv2)
-    heatmap = gradcam.generate(x_input)
-
-    original = X.squeeze(0).cpu().numpy()
-
-    fig, axes = plt.subplots(1, 3, figsize=(13, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
     fig.suptitle(
         f"{tag}  |  idx={idx}  |  true label={true_label}  |  "
         f"predicted label={pred_label}  |  predicted prob={prob:.3f}",
         fontsize=11,
     )
     
-    axes[0].imshow(original, cmap='seismic', vmin=-1, vmax=1)
-    axes[0].set_title("Input (magnetogram)")
+    # Magnetogram
+    axes[0].imshow(original_mag, cmap='seismic', vmin=-1, vmax=1)
+    axes[0].set_title("Magnetogram")
     axes[0].axis('off')
 
-    axes[1].imshow(heatmap, cmap='jet')
-    axes[1].set_title("Grad-CAM heatmap")
+    # Continuum
+    axes[1].imshow(original_cont, cmap='gray')
+    axes[1].set_title("Continuum")
     axes[1].axis('off')
-
-    axes[2].imshow(original, cmap='gray')
-    axes[2].imshow(heatmap, cmap='jet', alpha=0.5)
-    axes[2].set_title("Overlay")
-    axes[2].axis('off')
 
     plt.tight_layout()
     plt.show()
@@ -135,17 +117,17 @@ incorrect_idx = next(
     i for i in range(n) if all_preds[i] != all_labels[i]
 )
 
-print(f"\nShowing Grad-CAM for one correct prediction (idx={correct_idx}) "
+print(f"\nShowing samples for one correct prediction (idx={correct_idx}) "
       f"and one incorrect prediction (idx={incorrect_idx})...")
 
-show_gradcam_sample(
-    model, test_dataset, correct_idx,
+show_sample(
+    test_dataset, correct_idx,
     true_label=all_labels[correct_idx], pred_label=all_preds[correct_idx],
-    prob=all_probs[correct_idx], device=device, tag="Correct prediction",
+    prob=all_probs[correct_idx], tag="Correct prediction",
 )
 
-show_gradcam_sample(
-    model, test_dataset, 23,
-    true_label=all_labels[23], pred_label=all_preds[23],
-    prob=all_probs[23], device=device, tag="Incorrect prediction",
+show_sample(
+    test_dataset, incorrect_idx,
+    true_label=all_labels[incorrect_idx], pred_label=all_preds[incorrect_idx],
+    prob=all_probs[incorrect_idx], tag="Incorrect prediction",
 )

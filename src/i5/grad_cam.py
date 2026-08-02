@@ -26,6 +26,7 @@ class GradCAM:
         x: single input tensor, shape (1, 1, H, W)
         Returns: heatmap resized to (H, W), values in [0, 1]
         """
+        x = x.squeeze(0)
         self.model.eval()
         logit = self.model(x)                     # forward pass, triggers forward hook
         self.model.zero_grad()
@@ -50,6 +51,7 @@ class GradCAM:
 def visualize_gradcam(model, dataset, idx, device):
     X, y = dataset[idx]
     x_input = X.unsqueeze(0).unsqueeze(0).to(device)  # (1,1,H,W)
+    print("SHAPE:", x_input.shape)
     x_input.requires_grad_()
 
     gradcam = GradCAM(model, model.conv2)   # target the last conv layer

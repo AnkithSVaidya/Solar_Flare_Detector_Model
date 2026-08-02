@@ -21,7 +21,7 @@ VALIDATION_SPLIT = .2
 RESOLUTION = 128 
 
 # The cutoff of what defines a Solar Flare (1e-9 is no flare, 1e-7 - 1e-5 are flares)
-CUTOFF = 1e-8
+CUTOFF = 1e-6
 
 
 ####
@@ -36,6 +36,6 @@ NUM_EPOCHS = 30
 NUM_EPOCHS_CONTINUUM = 30
 
 # The learning rate for magnetogram CNN
-MAGNETOGRAM_LEARNING_RATE = 2e-5
+MAGNETOGRAM_LEARNING_RATE = 1e-4
 
 CONTINUUM_LEARNING_RATE = 2e-5

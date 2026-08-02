@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from preprocessing.magnetogram_dataset import MagnetogramDataset
 
 class MagnetogramCNN(nn.Module):
     def __init__(self):
