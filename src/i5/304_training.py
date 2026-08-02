@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from preprocessing.magnetogram_dataset import MagnetogramDataset
+from preprocessing.dataset304 import Dataset304
 from grad_cam import *
 from models.magnetogram_cnn import MagnetogramCNN
 from constants import *
@@ -18,13 +18,13 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=MAGNETOGRAM_LEARNING_RATE)
 
 # Define the train, val, and test datasets
-train_dataset = MagnetogramDataset(training=True, validation=False)
+train_dataset = Dataset304(training=True, validation=False)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-val_dataset = MagnetogramDataset(training=True, validation=True)
+val_dataset = Dataset304(training=True, validation=True)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-test_dataset = MagnetogramDataset(training=False)
+test_dataset = Dataset304(training=False)
 test_dataset = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # Determine what percentage of samples are flares

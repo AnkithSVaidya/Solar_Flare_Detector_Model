@@ -10,8 +10,8 @@ import os
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from magnetogram_cnn import MagnetogramCNN
-from magnetogram_dataset import MagnetogramDataset, load_gray, is_black_image
+from models.magnetogram_cnn import MagnetogramCNN
+from preprocessing.magnetogram_dataset import MagnetogramDataset, load_gray, is_black_image
 from grad_cam import GradCAM
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

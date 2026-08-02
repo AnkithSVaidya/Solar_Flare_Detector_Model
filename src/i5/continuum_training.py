@@ -1,14 +1,14 @@
 import torch
 import torch.nn as nn
-from preprocessing.magnetogram_dataset import MagnetogramDataset
+from preprocessing.continuum_dataset import ContinuumDataset
 from grad_cam import *
-from models.magnetogram_cnn import MagnetogramCNN
+from models.continuum_cnn import ContinuumCNN
 from constants import *
 
 import matplotlib.pyplot as plt
 
 # Load the model
-model = MagnetogramCNN()
+model = ContinuumCNN()
 
 # Tell the model to train on the GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -18,13 +18,13 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=MAGNETOGRAM_LEARNING_RATE)
 
 # Define the train, val, and test datasets
-train_dataset = MagnetogramDataset(training=True, validation=False)
+train_dataset = ContinuumDataset(training=True, validation=False)
 train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-val_dataset = MagnetogramDataset(training=True, validation=True)
+val_dataset = ContinuumDataset(training=True, validation=True)
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-test_dataset = MagnetogramDataset(training=False)
+test_dataset = ContinuumDataset(training=False)
 test_dataset = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 # Determine what percentage of samples are flares
@@ -91,7 +91,7 @@ for epoch in range(NUM_EPOCHS):
     if best_loss > val_loss:
         print("New Best Model Found!")
         best_loss = val_loss
-        torch.save(model.state_dict(), "magnetogram_cnn.pt")
+        torch.save(model.state_dict(), "continuum_cnn.pt")
 
 
 plt.plot(range(NUM_EPOCHS), train_losses, label="Training Loss")

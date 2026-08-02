@@ -1,20 +1,24 @@
 import torch
 import torch.nn as nn
-from magnetogram_dataset import MagnetogramDataset
-from grad_cam import *
+from preprocessing.magnetogram_dataset import MagnetogramDataset
+
 class MagnetogramCNN(nn.Module):
     def __init__(self):
         super().__init__()
+
         # Input (32, 1, 128, 128)
         self.conv1 = nn.Conv2d(1, 8, 3, padding=1)
         self.bn1 = nn.BatchNorm2d(8)
 
+        # Second convolution layer
         self.conv2 = nn.Conv2d(8, 16, 3, padding=1)
         self.bn2 = nn.BatchNorm2d(16)
 
+        # Third convolution layer
         self.conv3 = nn.Conv2d(16, 32, 3, padding=1)
         self.bn3 = nn.BatchNorm2d(32)
 
+        # Fourth convolution layer
         self.conv4 = nn.Conv2d(32, 64, 3, padding=1)
         self.bn4 = nn.BatchNorm2d(64)
 
