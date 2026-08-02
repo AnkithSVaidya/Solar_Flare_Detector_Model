@@ -32,10 +32,8 @@ CUTOFF = 1e-6
 BATCH_SIZE = 32                                 # 32 was found to be best at loading the GPU
 
 # The number of epochs for training
-NUM_EPOCHS = 30
+NUM_EPOCHS = 20
 NUM_EPOCHS_CONTINUUM = 30
 
 # The learning rate for magnetogram CNN
-MAGNETOGRAM_LEARNING_RATE = 1e-4
-
-CONTINUUM_LEARNING_RATE = 2e-5
+LEARNING_RATE = 5e-5

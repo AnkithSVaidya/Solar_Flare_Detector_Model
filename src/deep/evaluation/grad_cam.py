@@ -59,8 +59,14 @@ def visualize_gradcam(model, dataset, idx, device):
 
     original = X.cpu().numpy()
 
+    # Check if image has negative values
+    has_negative = (original < 0.5).any()
+    input_cmap = 'seismic' if has_negative else 'gray'
+    vmin = -1 if has_negative else 0
+    vmax = 1
+    print(has_negative)
     fig, axes = plt.subplots(1, 3, figsize=(12, 4))
-    axes[0].imshow(original, cmap='seismic', vmin=-1, vmax=1)
+    axes[0].imshow(original, cmap=input_cmap, vmin=vmin, vmax=vmax)
     axes[0].set_title(f"Input (label={y.item():.0f})")
     axes[0].axis('off')
 

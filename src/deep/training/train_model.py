@@ -1,32 +1,39 @@
 import torch
 import torch.nn as nn
 from preprocessing.flare_dataset import FlareDataset
-from grad_cam import *
-from models.dual_cnn import DualCNNFlareClassifier
+
+from models.magnetogram_cnn import MagnetogramCNN
+from models.continuum_cnn import ContinuumCNN
+from models.uv_cnn import UVCNN
+
 from constants import *
 
 import matplotlib.pyplot as plt
-
-def main():
+def train_model(relevant_feature = "magnetogram"):
 
     # Load the model
-    model = DualCNNFlareClassifier()
+    if relevant_feature == "magnetogram":
+        model = MagnetogramCNN()
+    elif relevant_feature == "continuum":
+        model = ContinuumCNN()
+    else:
+        model = UVCNN()
 
     # Tell the model to train on the GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
 
     # Define the optimizer as Adam
-    optimizer = torch.optim.Adam(model.parameters(), lr=MAGNETOGRAM_LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     # Define the train, val, and test datasets
-    train_dataset = FlareDataset(features=['magnetogram', 'continuum'], type='train')
+    train_dataset = FlareDataset(features=[relevant_feature], type='train')
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,
-        num_workers=4,
-        pin_memory=True,
-        persistent_workers=True,
+        num_workers=4,       # tune based on your CPU core count
+        pin_memory=True,     # speeds up CPU->GPU transfer
+        persistent_workers=True,  # avoids worker restart overhead each epoch)
     )
-    val_dataset = FlareDataset(features=['magnetogram', 'continuum'], type='val')
+    val_dataset = FlareDataset(features=[relevant_feature], type='val')
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
     
@@ -39,13 +46,12 @@ def main():
     n_pos = train_dataset.metadata["is_flare"].sum()
     n_neg = len(train_dataset.metadata) - n_pos
     pos_weight = torch.tensor([n_neg / n_pos]).to(device)
-    print("Accuracy if predicted 'all false':", n_neg/n_pos)
 
     # Define the loss function
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
-    best_loss = 10000
+    best_loss = 10000               # Define the best loss as a very high number
 
-    # Store the losses
+    # Store the losses (to graph afterwards)
     train_losses = []
     val_losses = []
 
@@ -55,21 +61,19 @@ def main():
         model.train()
         train_loss = 0.0
 
-        for batch_data, y in train_loader:
-            # batch_data is [batch_size, 2, 128, 128]
-            # Split into magnetogram and continuum
-            magnetogram = batch_data[:, 0:1, :, :].to(device)  # [batch_size, 1, 128, 128]
-            continuum = batch_data[:, 1:2, :, :].to(device)    # [batch_size, 1, 128, 128]
-            y = y.to(device).unsqueeze(1)  # (B,) -> (B, 1)
+        for X, y in train_loader:
+            X, y = X.to(device), y.to(device)
+            # X = X.unsqueeze(1)          # (B, H, W) -> (B, 1, H, W): add channel dim for Conv2d
+            y = y.unsqueeze(1)          # (B,) -> (B, 1): match logits shape from fc2
 
             # Zero the optimizer
             optimizer.zero_grad()
-            logits = model(continuum, magnetogram)
+            logits = model(X)
             loss = loss_fn(logits, y)
             loss.backward()
             optimizer.step()
 
-            train_loss += loss.item() * magnetogram.size(0)
+            train_loss += loss.item() * X.size(0)
 
         # Training loss
         train_loss /= len(train_dataset)
@@ -79,15 +83,13 @@ def main():
         val_loss = 0.0
         correct = 0
         with torch.no_grad():
-            for batch_data, y in val_loader:
-                # Split into magnetogram and continuum
-                magnetogram = batch_data[:, 0:1, :, :].to(device)
-                continuum = batch_data[:, 1:2, :, :].to(device)
-                y = y.to(device).unsqueeze(1)
+            for X, y in val_loader:
+                X, y = X.to(device), y.to(device)
+                y = y.unsqueeze(1)
 
-                logits = model(continuum, magnetogram)
+                logits = model(X)
                 loss = loss_fn(logits, y)
-                val_loss += loss.item() * magnetogram.size(0)
+                val_loss += loss.item() * X.size(0)
 
                 preds = (torch.sigmoid(logits) > 0.5).float()
                 correct += (preds == y).sum().item()
@@ -102,7 +104,7 @@ def main():
         if best_loss > val_loss:
             print("New Best Model Found!")
             best_loss = val_loss
-            torch.save(model.state_dict(), "dual_cnn.pt")
+            torch.save(model.state_dict(), f"src/deep/trained_models/{relevant_feature}_cnn.pt")
 
 
     plt.plot(range(NUM_EPOCHS), train_losses, label="Training Loss")
@@ -112,6 +114,3 @@ def main():
     plt.ylabel("Loss")
     plt.legend()
     plt.show()
-
-if __name__ == "__main__":
-    main()
