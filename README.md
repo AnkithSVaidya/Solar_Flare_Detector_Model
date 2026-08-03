@@ -47,8 +47,8 @@ python -m pip install -r requirements.txt
 ## 3. Run the whole pipeline
 
 ```bash
-python -m src.run_all            # build features -> train/tune -> evaluate -> CNN
-python -m src.run_all --rebuild  # also re-extract features from images
+python -m src.classic.run_all            # build features -> train/tune -> evaluate -> CNN
+python -m src.classic.run_all --rebuild  # also re-extract features from images
 ```
 
 Outputs:
@@ -78,3 +78,9 @@ The written analysis, with all results and figures, is in
 
 The original exploratory `preprocessing.ipynb` and the first CNNs are kept for
 history; the `src/` package is the cleaned-up, modular version.
+
+## 5. Running the CNNs
+To run the CNNs, run 
+```bash
+python -m src.deep.main 
+```

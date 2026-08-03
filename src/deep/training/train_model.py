@@ -36,12 +36,6 @@ def train_model(relevant_feature = "magnetogram"):
     val_dataset = FlareDataset(features=[relevant_feature], type='val')
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
-    
-    train_ids = set(train_dataset.metadata["id"])
-    val_ids = set(val_dataset.metadata["id"])
-    overlap = train_ids & val_ids
-    print(f"Overlapping samples between train/val: {len(overlap)}")
-
     # Determine what percentage of samples are flares
     n_pos = train_dataset.metadata["is_flare"].sum()
     n_neg = len(train_dataset.metadata) - n_pos
@@ -109,7 +103,7 @@ def train_model(relevant_feature = "magnetogram"):
 
     plt.plot(range(NUM_EPOCHS), train_losses, label="Training Loss")
     plt.plot(range(NUM_EPOCHS), val_losses, label="Validation Loss")
-
+    plt.title(f"{relevant_feature.capitalize()} Loss Over Time")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.legend()

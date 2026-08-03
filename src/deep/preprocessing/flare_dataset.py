@@ -64,16 +64,6 @@ class FlareDataset(torch.utils.data.Dataset):
         metadata = metadata[metadata["id"].apply(self._has_all_relevant_data)]
         after = len(metadata)
 
-         # --- DEBUG ---
-        regions = sorted(set(metadata["id"].apply(lambda d: d.split("_", 1)[0])))
-        print(f"[{self.type}] rows={len(metadata)}, unique regions={len(regions)}, "
-            f"first 5 regions={regions[:5]}, SEED={SEED}")
-        # --- END DEBUG ---
-
-        # Print out how many samples were dropped
-        if before != after:
-            print(f"Dropped {before - after} samples with missing images ({after} remaining)")
-
         # Check if we are a test
         if self.type == "test":
             return metadata

@@ -1,16 +1,6 @@
-"""
-Loads the saved best model checkpoint and evaluates it on the held-out
-TEST dataset (data/test), reporting accuracy, the majority-class baseline,
-a confusion matrix, and precision/recall/F1 for the flare class.
 
-Run this in your project directory, alongside magnetogram_cnn.py,
-magnetogram_dataset.py, and your saved model weights.
-
-Note: this is meant to be run sparingly -- the test set should be your
-final check, not something you re-run after every training tweak (that
-would slowly turn it into a second validation set through repeated peeking).
-"""
 import torch
+import random
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score, ConfusionMatrixDisplay
 from models.magnetogram_cnn import MagnetogramCNN
@@ -22,7 +12,6 @@ from evaluation.grad_cam import GradCAM
 
 def evaluate_model(relevant_feature = "magnetogram"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(relevant_feature)
   
     # Load the model
     if relevant_feature == "magnetogram":
@@ -42,7 +31,7 @@ def evaluate_model(relevant_feature = "magnetogram"):
 
 
     @torch.no_grad()
-    def evaluate(model, loader, device, threshold=0.4):
+    def evaluate(model, loader, device, threshold=0.5):
         all_preds = []
         all_labels = []
         all_probs = []
@@ -78,7 +67,7 @@ def evaluate_model(relevant_feature = "magnetogram"):
     print(f"Majority-class baseline accuracy: {majority_baseline_acc:.4f}")
     print(f"Model accuracy:                   {accuracy:.4f}")
     print()
-    print("Confusion matrix:")
+    print(f"{relevant_feature.capitalize()} Confusion matrix:")
     print(f"                  Predicted No-Flare   Predicted Flare")
     print(f"Actual No-Flare   {cm[0][0]:<21}{cm[0][1]}")
     print(f"Actual Flare      {cm[1][0]:<21}{cm[1][1]}")
@@ -93,7 +82,7 @@ def evaluate_model(relevant_feature = "magnetogram"):
     fig, ax = plt.subplots(figsize=(5, 5))
     disp.plot(ax=ax, cmap="Blues", colorbar=False, values_format="d")
     ax.set_title(
-        f"Confusion Matrix -- Test Set\n"
+        f"{relevant_feature.capitalize()} Confusion Matrix -- Test Set\n"
         f"Accuracy: {accuracy:.3f}  |  Precision: {precision:.3f}  |  "
         f"Recall: {recall:.3f}  |  F1: {f1:.3f}"
     )
@@ -108,6 +97,8 @@ def evaluate_model(relevant_feature = "magnetogram"):
 
     def show_gradcam_sample(model, dataset, idx, true_label, pred_label, prob, device, tag):
         X, y = dataset[idx]
+        dataset_id = dataset.metadata.iloc[idx]["id"]
+
         x_input = X.unsqueeze(0).unsqueeze(0).to(device)
         x_input.requires_grad_()
 
@@ -124,13 +115,13 @@ def evaluate_model(relevant_feature = "magnetogram"):
 
         fig, axes = plt.subplots(1, 3, figsize=(13, 5))
         fig.suptitle(
-            f"{tag}  |  idx={idx}  |  true label={true_label}  |  "
+            f"{tag}  |  idx={dataset_id}  |  true label={true_label}  |  "
             f"predicted label={pred_label}  |  predicted prob={prob:.3f}",
             fontsize=11,
         )
         
         axes[0].imshow(original, cmap=input_cmap, vmin=vmin, vmax=vmax)
-        axes[0].set_title("Input (magnetogram)")
+        axes[0].set_title(f"Input {relevant_feature}")
         axes[0].axis('off')
 
         axes[1].imshow(heatmap, cmap='jet')
@@ -146,12 +137,13 @@ def evaluate_model(relevant_feature = "magnetogram"):
         plt.show()
 
 
-    correct_idx = next(
-        i for i in range(n) if all_preds[i] == all_labels[i]
-    )
-    incorrect_idx = next(
-        i for i in range(n) if all_preds[i] != all_labels[i]
-    )
+    # Find all correct and incorrect predictions
+    correct_indices = [i for i in range(n) if all_preds[i] == all_labels[i]]
+    incorrect_indices = [i for i in range(n) if all_preds[i] != all_labels[i]]
+
+    # Pick random samples
+    correct_idx = random.choice(correct_indices) if correct_indices else None
+    incorrect_idx = random.choice(incorrect_indices) if incorrect_indices else Non
 
     print(f"\nShowing Grad-CAM for one correct prediction (idx={correct_idx}) "
         f"and one incorrect prediction (idx={incorrect_idx})...")
