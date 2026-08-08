@@ -8,6 +8,22 @@ import pandas as pd
 # Local Imports
 from constants import *
 
+# This function augments the image by rotating, shifting, and adding noise
+def augment(img):
+    angle = np.random.uniform(-10, 10)
+    im = img.rotate(angle, resample=Image.BILINEAR, fillcolor=128)
+    dx, dy = np.random.randint(-3, 4), np.random.randint(-3, 4) 
+    im = im.transform((RESOLUTION, RESOLUTION), Image.AFFINE, (1, 0, dx, 0, 1, dy), fillcolor=128)
+    arr = np.array(im, dtype=np.float32) / 255.0
+    arr += np.random.normal(0, 0.02, arr.shape)
+    return np.clip(arr, 0, 1)
+
+# This function builds an array of n augmented images
+def build(img, label, n):
+    X = np.array([augment(img) for _ in range(n)], dtype=np.float32)
+    y = np.full((n, 1), label, dtype=np.float32)
+    return X, y
+     
 # This function loads an image and resizes it
 def load_gray(path):
     img = Image.open(path).convert("L").resize((RESOLUTION, RESOLUTION))

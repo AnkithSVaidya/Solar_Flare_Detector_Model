@@ -1,12 +1,13 @@
 from training.train_model import train_model
 from evaluation.evaluate_model import evaluate_model
-
+from preprocessing.flare_dataset import FlareDataset
 VALID_SELECTIONS = ["1", "2", "3", "4"]
 FEATURES = ["magnetogram", "continuum", "304", "94"]
 
 if __name__ == "__main__":
     print("Solar Flare Prediction: Deep Learning")
     print("This uses CNNs to predict whether solar flares will occur")
+
 
     while( True ):
         print("\nOptions:")

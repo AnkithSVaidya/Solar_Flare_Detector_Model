@@ -5,6 +5,9 @@ import os
 
 # Local imports
 from .preprocessing_helpers import *
+import matplotlib.pyplot as plt
+
+N = 20
 
 class FlareDataset(torch.utils.data.Dataset):
     """
@@ -33,7 +36,6 @@ class FlareDataset(torch.utils.data.Dataset):
         # Get the root directory of the path
         self.root_data_dir = find_folder(os.getcwd(), "data")
         self.root_data_dir = os.path.join(self.root_data_dir, 'test' if type == 'test' else 'training')
-
 
         # Get the target csv
         self.metadata = self._process_metadata()
@@ -105,11 +107,15 @@ class FlareDataset(torch.utils.data.Dataset):
 
     # Function that returns the length
     def __len__(self):
-        return len(self.metadata)
+        if self.type == "train":
+            return len(self.metadata) * N
+        else:
+            return len(self.metadata)
 
     # Get an item based on index
     def __getitem__(self, idx):
-
+        if self.type == "train":
+            idx = int(idx / N)
         # Get the sample from the metadata
         row = self.metadata.iloc[idx]
         dataset_id = row["id"]
@@ -141,12 +147,14 @@ class FlareDataset(torch.utils.data.Dataset):
                     images.append(curr_img)
                     break
 
-
+                    
         # Go through each image and normalize them
         for i in range(len(self.features)):
-
-            # Normalize the image
-            images[i] = np.array(images[i]) / 255.0
+            # Augment image
+            if self.type == "train":
+                images[i] = augment(images[i])
+            else:
+                images[i] = np.array(images[i], dtype=np.float32) / 255.0
 
             # Do some unique things for certain features
             if self.features[i] == 'magnetogram':
@@ -155,8 +163,10 @@ class FlareDataset(torch.utils.data.Dataset):
             elif self.features[i] == 'continuum':
                 images[i] = 1 - images[i]
 
+        # Display the image
         # Convert into torch tensors & return
         images = np.array(images)
+        
         X = torch.tensor(images).float()
         y = torch.tensor(row["is_flare"], dtype=torch.float32)
         return X, y
