@@ -6,9 +6,7 @@ import os
 # Local imports
 from .preprocessing_helpers import *
 import matplotlib.pyplot as plt
-
-N = 20
-
+N = 2
 class FlareDataset(torch.utils.data.Dataset):
     """
     This is a class that can load data from any source
@@ -152,7 +150,7 @@ class FlareDataset(torch.utils.data.Dataset):
         for i in range(len(self.features)):
             # Augment image
             if self.type == "train":
-                images[i] = augment(images[i])
+                images[i] = augment(images[i], fill_color=128 if self.features[i] == 'magnetogram' else 0)
             else:
                 images[i] = np.array(images[i], dtype=np.float32) / 255.0
 

@@ -9,11 +9,11 @@ import pandas as pd
 from constants import *
 
 # This function augments the image by rotating, shifting, and adding noise
-def augment(img):
+def augment(img, fill_color = 128):
     angle = np.random.uniform(-10, 10)
-    im = img.rotate(angle, resample=Image.BILINEAR, fillcolor=128)
+    im = img.rotate(angle, resample=Image.BILINEAR, fillcolor=fill_color)
     dx, dy = np.random.randint(-3, 4), np.random.randint(-3, 4) 
-    im = im.transform((RESOLUTION, RESOLUTION), Image.AFFINE, (1, 0, dx, 0, 1, dy), fillcolor=128)
+    im = im.transform((RESOLUTION, RESOLUTION), Image.AFFINE, (1, 0, dx, 0, 1, dy), fillcolor=fill_color)
     arr = np.array(im, dtype=np.float32) / 255.0
     arr += np.random.normal(0, 0.02, arr.shape)
     return np.clip(arr, 0, 1)
