@@ -105,14 +105,14 @@ class FlareDataset(torch.utils.data.Dataset):
 
     # Function that returns the length
     def __len__(self):
-        if self.type == "train":
+        if self.type == "train" and "magnetogram" in self.features:
             return len(self.metadata) * N
         else:
             return len(self.metadata)
 
     # Get an item based on index
     def __getitem__(self, idx):
-        if self.type == "train":
+        if self.type == "train" and "magnetogram" in self.features:
             idx = int(idx / N)
         # Get the sample from the metadata
         row = self.metadata.iloc[idx]

@@ -3,10 +3,6 @@
 Predicting significant solar flares from **SDOBenchmark** active-region image
 patches (10 SDO channels × up to 4 timesteps) plus the observation date.
 
-This repository contains the **Iteration 4** work: a full machine-learning
-pipeline that implements, trains, tunes, evaluates and interprets several
-models, and writes a report with all the required figures.
-
 ## 1. Get the data
 
 The dataset is **not** checked in (it's gitignored under `data/`). On networks
@@ -44,7 +40,7 @@ fetch and extract it automatically.)*
 python -m pip install -r requirements.txt
 ```
 
-## 3. Run the whole pipeline
+## 3. Run the classic pipeline
 
 ```bash
 python -m src.classic.run_all            # build features -> train/tune -> evaluate -> CNN
@@ -62,19 +58,19 @@ Outputs:
 The written analysis, with all results and figures, is in
 [`REPORT.md`](REPORT.md).
 
-## 4. Code layout
+## 6. CNN Models Code layout
 
 | File | Purpose |
 |---|---|
-| `src/config.py` | Paths, flare threshold, image size, cycle constants |
-| `src/data.py` | Discover samples from the raw tree; image + cycle loading |
-| `src/features.py` | Per-sample interpretable feature extraction |
-| `src/build_dataset.py` | Raw images → `artifacts/features.csv` |
-| `src/models.py` | Model zoo + hyperparameter grids |
-| `src/train.py` | Train, GridSearch-tune, evaluate, interpret; make figures |
-| `src/cnn.py` | Clean CNN baseline on magnetograms |
-| `src/plots.py` | All figure generation |
-| `src/run_all.py` | Orchestrate the full pipeline |
+| `classic/config.py` | Paths, flare threshold, image size, cycle constants |
+| `classic/data.py` | Discover samples from the raw tree; image + cycle loading |
+| `classic/features.py` | Per-sample interpretable feature extraction |
+| `classic/build_dataset.py` | Raw images → `artifacts/features.csv` |
+| `classic/models.py` | Model zoo + hyperparameter grids |
+| `classic/train.py` | Train, GridSearch-tune, evaluate, interpret; make figures |
+| `classic/cnn.py` | Clean CNN baseline on magnetograms |
+| `classic/plots.py` | All figure generation |
+| `classic/run_all.py` | Orchestrate the full pipeline |
 
 The original exploratory `preprocessing.ipynb` and the first CNNs are kept for
 history; the `src/` package is the cleaned-up, modular version.
@@ -84,3 +80,22 @@ To run the CNNs, run
 ```bash
 python -m src.deep.main 
 ```
+
+## 4. Classic Model Code layout
+
+| File | Purpose |
+|---|---|
+| `deep/constants.py` | Constants for CNN format & training |
+| `deep/main.py` | Main function to run CNNs |
+| `deep/preprocessing/eda_script.py` | Runs EDA (exploratory data analysis) on the dataset |
+| `deep/preprocessing/flate_dataset.py` | Dataset for CNNs for any image type (feed features to use in initialization) |
+| `deep/preprocessing/preprocessing_helpers.py` | Helper functions for the flare dataset |
+| `deep/training/train_model.py` | Main loop to train the model |
+| `deep/models/continuum_cnn.py` | The CNN for the continuum data |
+| `deep/models/magnetogram_cnn.py` | The CNN for the magnetogram data |
+| `deep/models/uv_cnn.py` | The CNN for the UV data |
+| `deep/evaluation/evaluate_model.py` | Evaluate the model by running GradCam and displaying the Decision Matrix |
+| `deep/evaluation/grad_cam.py` | GradCam functions |
+
+
+CNNs are stored in the models/ folder and the results/ folder are for results stored & used in the presentation.
